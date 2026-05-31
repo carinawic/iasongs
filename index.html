@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi Audio Controller</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+        font-family: Arial, sans-serif;
+    }
+
+    body {
+        background: #f5f5f5;
+        padding: 30px;
+    }
+
+    h1 {
+        text-align: center;
+    }
+
+    .track {
+        background: white;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 10px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    .title {
+        margin-bottom: 10px;
+        font-weight: bold;
+    }
+
+    .controls {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    button {
+        padding: 8px 16px;
+        cursor: pointer;
+    }
+
+    .progress-container {
+        flex: 1;
+        height: 16px;
+        background: #ddd;
+        border-radius: 8px;
+        position: relative;
+        cursor: pointer;
+    }
+
+    .progress {
+        height: 100%;
+        width: 0%;
+        background: #4caf50;
+        border-radius: 8px;
+    }
+
+    .handle {
+        width: 18px;
+        height: 18px;
+        background: #2196f3;
+        border-radius: 50%;
+        position: absolute;
+        top: 50%;
+        left: 0%;
+        transform: translate(-50%, -50%);
+        cursor: grab;
+    }
+
+    .time {
+        width: 120px;
+        text-align: right;
+        font-size: 14px;
+    }
+</style>
+</head>
+<body>
+
+<h1>I&A Songs</h1>
+
+<div id="tracks"></div>
+
+<script>
+
+/*
+
+Roxette: The look
+Nirvana: smells like teen spirit
+The script: hall of fame
+Team bullet: (Carina valde) Kickstarter
+
+Matterhorn: (Carina valde) Three Days Grace - The Mountain
+Manticore: (Carina valde) Iron Maiden - fear of the dark 
+Hermes: (Carina valde) Metallica - Enter Sandman
+Midas: (Carina valde) Iron Maiden - Run for the hills
+
+Everest: (Carina valde) aint no mountain high enough 
+AC/DC: Back in black 
+UX: (Carina valde) Iron Maiden - Hallowed be thy name
+ScM CoP: (Carina valde) Metallica - Master of puppets
+Queen: We are the champions
+
+*/
+
+const tracks = [
+    { name: "Roxette (She's Got The Look)", file: "Roxette   She's Got The Look.mp3", start: 15 },
+    { name: "Nirvana (Smells Like Teen Spirit)", file: "Nirvana - Smells Like Teen Spirit (Lyrics).mp3", start: 0 },
+    { name: "The script (Hall Of Fame)", file: "The Script - Hall Of Fame (Lyrics).mp3", start: 39 },
+    { name: "Team bullet (Kickstarter)", file: "Bullet - Kickstarter (Official Video).mp3",start: 0 },
+
+    { name: "Matterhorn (The Mountain)", file: "Three Days Grace - The Mountain.mp3", start: 5 },
+    { name: "Manticore (Fear Of The Dark)", file: "Iron Maiden Fear Of The Dark ( Completo ) Instrumental.mp3", start: 0 },
+    { name: "Hermes (Enter Sandman)", file: "Metallica - Enter Sandman.mp3", start: 85 },
+    { name: "Midas (Run To The Hills)", file: "Iron Maiden - Run To The Hills (Official Video).mp3", start: 5 },
+
+    { name: "Everest (Never Too Late)", file: "Three Days Grace - Never Too Late (Lyrics).mp3", start: 35 },
+    { name: "AC/DC (Back In Black)", file: "ACDC - Back In Black (Lyrics).mp3", start: 5 },
+    { name: "UX (Hallowed Be Thy Name)", file: "Hallowed Be Thy Name - Iron Maiden.mp3", start: 78 },
+    { name: "ScM CoP (scrum-Master of Puppets)", file: "Master of Puppets (Remastered).mp3", start: 90 },
+    { name: "Queen (We Are The Champions)", file: "Queen - We Are The Champions [Lyrics].mp3", start: 30 },
+];
+
+const tracksContainer = document.getElementById("tracks");
+
+function formatTime(seconds) {
+    if (isNaN(seconds)) return "0:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+tracks.forEach((track) => {
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "track";
+
+    wrapper.innerHTML = `
+        <div class="title">${track.name}</div>
+
+        <div class="controls">
+            <button class="playBtn">Play</button>
+
+            <div class="progress-container">
+                <div class="progress"></div>
+                <div class="handle"></div>
+            </div>
+
+            <div class="time">0:00 / 0:00</div>
+        </div>
+    `;
+
+    tracksContainer.appendChild(wrapper);
+
+    const audio = new Audio(track.file);
+
+    const playBtn = wrapper.querySelector(".playBtn");
+    const progressContainer = wrapper.querySelector(".progress-container");
+    const progress = wrapper.querySelector(".progress");
+    const handle = wrapper.querySelector(".handle");
+    const timeDisplay = wrapper.querySelector(".time");
+
+    let dragging = false;
+
+    audio.addEventListener("loadedmetadata", () => {
+        audio.currentTime = track.start || 0;
+
+        timeDisplay.textContent =
+            `${formatTime(track.start || 0)} / ${formatTime(audio.duration)}`;
+    });
+
+    playBtn.addEventListener("click", () => {
+        if (audio.paused) {
+            audio.play();
+            playBtn.textContent = "Stop";
+        } else {
+            audio.pause();
+            playBtn.textContent = "Play";
+        }
+    });
+
+    audio.addEventListener("ended", () => {
+        playBtn.textContent = "Play";
+    });
+
+    audio.addEventListener("timeupdate", () => {
+        if (dragging) return;
+
+        const percent =
+            (audio.currentTime / audio.duration) * 100 || 0;
+
+        progress.style.width = percent + "%";
+        handle.style.left = percent + "%";
+
+        timeDisplay.textContent =
+            `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
+    });
+
+    function seek(clientX) {
+        const rect = progressContainer.getBoundingClientRect();
+
+        let x = clientX - rect.left;
+        x = Math.max(0, Math.min(x, rect.width));
+
+        const percent = x / rect.width;
+
+        progress.style.width = percent * 100 + "%";
+        handle.style.left = percent * 100 + "%";
+
+        audio.currentTime = percent * audio.duration;
+    }
+
+    progressContainer.addEventListener("click", e => seek(e.clientX));
+
+    handle.addEventListener("mousedown", e => {
+        dragging = true;
+
+        const move = ev => seek(ev.clientX);
+
+        const up = () => {
+            dragging = false;
+            document.removeEventListener("mousemove", move);
+            document.removeEventListener("mouseup", up);
+        };
+
+        document.addEventListener("mousemove", move);
+        document.addEventListener("mouseup", up);
+
+        e.preventDefault();
+    });
+});
+</script>
+
+</body>
+</html>
